@@ -10,7 +10,7 @@ use munge_sys::{munge_decode, munge_encode, munge_strerror, MUNGE_SUCCESS};
 struct DecodedMessage {
     pub uid: u32,
     pub gid: u32,
-    pub payload: String,
+    pub payload: Option<String>,
 }
 
 #[derive(Debug)]
@@ -98,19 +98,23 @@ impl fmt::Display for MungeError {
     }
 }
 
-fn encode(message: &str) -> Result<String, MungeError> {
+fn encode(payload: Option<&str>) -> Result<String, MungeError> {
     let mut cred: *mut i8 = std::ptr::null_mut();
 
-    let payload = CString::new(message).unwrap();
-    let payload_ptr = payload.as_ptr() as *const libc::c_void;
+    let result = if let Some(payload) = payload {
+        let payload_cstring = CString::new(payload).unwrap();
+        let payload_ptr = payload_cstring.as_ptr() as *const libc::c_void;
 
-    let result = unsafe {
-        munge_encode(
-            &mut cred,
-            std::ptr::null_mut(),
-            payload_ptr,
-            message.len() as i32,
-        )
+        unsafe {
+            munge_encode(
+                &mut cred,
+                std::ptr::null_mut(),
+                payload_ptr,
+                payload.len() as i32,
+            )
+        }
+    } else {
+        unsafe { munge_encode(&mut cred, std::ptr::null_mut(), std::ptr::null_mut(), 0) }
     };
 
     if result != MUNGE_SUCCESS {
@@ -119,11 +123,11 @@ fn encode(message: &str) -> Result<String, MungeError> {
 
     assert!(!cred.is_null());
     let slice = unsafe { CStr::from_ptr(cred) };
-    let message = slice.to_str().unwrap().to_string();
-    Ok(message)
+    let cred = slice.to_str().unwrap().to_string();
+    Ok(cred)
 }
 
-fn decode(message: &str) -> Result<DecodedMessage, MungeError> {
+fn decode(cred: &str) -> Result<DecodedMessage, MungeError> {
     let mut payload: *mut libc::c_void = std::ptr::null_mut();
     let mut payload_length: i32 = 0;
     let mut uid: u32 = 0;
@@ -131,7 +135,7 @@ fn decode(message: &str) -> Result<DecodedMessage, MungeError> {
 
     let result = unsafe {
         munge_decode(
-            message.as_ptr() as *const i8,
+            cred.as_ptr() as *const i8,
             std::ptr::null_mut(),
             &mut payload,
             &mut payload_length,
@@ -143,8 +147,13 @@ fn decode(message: &str) -> Result<DecodedMessage, MungeError> {
         return Err(MungeError::from_number(result));
     }
 
-    let slice = unsafe { CStr::from_ptr(payload as *const i8) };
-    let payload = slice.to_str().unwrap().to_string();
+    let payload = if payload.is_null() {
+        None
+    } else {
+        // Munge always gives us a null-terminated
+        let slice = unsafe { CStr::from_ptr(payload as *const i8) };
+        Some(slice.to_str().unwrap().to_string())
+    };
 
     Ok(DecodedMessage { uid, gid, payload })
 }
@@ -160,11 +169,19 @@ mod tests {
     }
 
     #[test]
-    fn test_that_encode_decode_round_trip_works() {
+    fn test_that_encode_decode_round_trip_without_payload_works() {
+        let message = decode(&encode(None).unwrap()).unwrap();
+        assert_eq!(message.payload, None);
+        assert!(message.uid > 0);
+        assert!(message.gid > 0);
+    }
+
+    #[test]
+    fn test_that_encode_decode_round_trip_with_payload_works() {
         let payload = "abc";
-        let decoded = decode(&encode(payload).unwrap()).unwrap();
-        assert_eq!(decoded.payload, payload);
-        assert!(decoded.uid > 0);
-        assert!(decoded.gid > 0);
+        let message = decode(&encode(Some(payload)).unwrap()).unwrap();
+        assert_eq!(message.payload.unwrap(), payload);
+        assert!(message.uid > 0);
+        assert!(message.gid > 0);
     }
 }
