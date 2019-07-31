@@ -67,6 +67,8 @@ extern "C" {
         gid: *mut gid_t,
     ) -> munge_err_t;
 
+    pub fn munge_strerror(ctx: munge_err_t) -> *const libc::c_char;
+
     #[doc = "  Context Functions"]
     #[doc = ""]
     #[doc = "  The context passed to munge_encode() is treated read-only except for the"]
@@ -85,7 +87,7 @@ extern "C" {
 
     pub fn munge_ctx_destroy(ctx: munge_ctx_t);
 
-    pub fn munge_strerror(ctx: munge_err_t) -> *const libc::c_char;
+    pub fn munge_ctx_strerror(ctx: munge_ctx_t) -> *const libc::c_char;
 
     pub fn munge_ctx_get(ctx: munge_ctx_t, opt: munge_opt_t, ...) -> munge_err_t;
 
