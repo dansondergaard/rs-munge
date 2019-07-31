@@ -1,15 +1,16 @@
 extern crate libc;
 extern crate munge_sys;
 
-use std::fmt;
 use std::ffi::{CStr, CString};
-use std::convert::TryInto;
+use std::fmt;
 
-use munge_sys::{munge_strerror, munge_encode, munge_decode, MUNGE_SUCCESS};
+use munge_sys::{munge_decode, munge_encode, munge_strerror, MUNGE_SUCCESS};
 
+#[derive(Debug)]
 struct DecodedMessage {
     pub uid: u32,
     pub gid: u32,
+    pub payload: String,
 }
 
 #[derive(Debug)]
@@ -35,7 +36,6 @@ enum MungeError {
 }
 
 impl MungeError {
-
     fn to_string(&self) -> String {
         unsafe {
             let errno = self.to_number();
@@ -87,7 +87,7 @@ impl MungeError {
             16 => MungeError::CredRewound,
             17 => MungeError::CredReplayed,
             18 => MungeError::CredUnauthorized,
-            _ => panic!("Unknown error number")
+            _ => panic!("Unknown error number"),
         }
     }
 }
@@ -98,58 +98,73 @@ impl fmt::Display for MungeError {
     }
 }
 
-fn encode() -> Result<String, MungeError> {
-    unsafe {
-        let mut cred: *mut i8 = std::ptr::null_mut();
-        let result = munge_encode(&mut cred, std::ptr::null_mut(), std::ptr::null_mut(), 0);
-        if result != MUNGE_SUCCESS {
-            return Err(MungeError::from_number(result));
-        }
+fn encode(message: &str) -> Result<String, MungeError> {
+    let mut cred: *mut i8 = std::ptr::null_mut();
 
-        assert!(!cred.is_null());
-        let slice = CStr::from_ptr(cred);
-        let message = slice.to_str().unwrap().to_string();
-        return Ok(message);
+    let payload = CString::new(message).unwrap();
+    let payload_ptr = payload.as_ptr() as *const libc::c_void;
+
+    let result = unsafe {
+        munge_encode(
+            &mut cred,
+            std::ptr::null_mut(),
+            payload_ptr,
+            message.len() as i32,
+        )
+    };
+
+    if result != MUNGE_SUCCESS {
+        return Err(MungeError::from_number(result));
     }
+
+    assert!(!cred.is_null());
+    let slice = unsafe { CStr::from_ptr(cred) };
+    let message = slice.to_str().unwrap().to_string();
+    Ok(message)
 }
 
 fn decode(message: &str) -> Result<DecodedMessage, MungeError> {
-    let mut uid = 0 as u32;
-    let mut gid = 0 as u32;
+    let mut payload: *mut libc::c_void = std::ptr::null_mut();
+    let mut payload_length: i32 = 0;
+    let mut uid: u32 = 0;
+    let mut gid: u32 = 0;
 
-    unsafe {
-        let result = munge_decode(
+    let result = unsafe {
+        munge_decode(
             message.as_ptr() as *const i8,
             std::ptr::null_mut(),
-            std::ptr::null_mut(),
-            std::ptr::null_mut(),
+            &mut payload,
+            &mut payload_length,
             &mut uid,
             &mut gid,
-        );
-
-        if result != MUNGE_SUCCESS {
-            return Err(MungeError::from_number(result));
-        }
+        )
     };
+    if result != MUNGE_SUCCESS {
+        return Err(MungeError::from_number(result));
+    }
 
-    Ok(DecodedMessage { uid: uid, gid: gid })
+    let slice = unsafe { CStr::from_ptr(payload as *const i8) };
+    let payload = slice.to_str().unwrap().to_string();
+
+    Ok(DecodedMessage { uid, gid, payload })
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{decode, encode, MungeError};
 
     #[test]
-    fn test_that_munge_error_works() {
+    fn test_that_mungeerror_works() {
         assert_eq!(MungeError::Snafu.to_string(), "Internal error");
         assert_eq!(MungeError::BadArg.to_string(), "Invalid argument");
     }
 
     #[test]
-    fn test_round_trip_encode_decode() {
-        let decoded = decode(&encode().unwrap()).unwrap();
-        println!("uid: {} gid: {}", decoded.uid, decoded.gid);
+    fn test_that_encode_decode_round_trip_works() {
+        let payload = "abc";
+        let decoded = decode(&encode(payload).unwrap()).unwrap();
+        assert_eq!(decoded.payload, payload);
+        assert!(decoded.uid > 0);
+        assert!(decoded.gid > 0);
     }
 }
-
-
