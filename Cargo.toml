@@ -1,0 +1,12 @@
+[package]
+name = "rs-munge"
+version = "0.1.0"
+authors = ["Dan Søndergaard <das@birc.au.dk>"]
+edition = "2018"
+description = "Rust bindings for the munge authentication service."
+keywords = ["munge"]
+
+[dependencies]
+libc = "0.2"
+munge-sys = { path = "munge-sys", version = "0.1" }
+

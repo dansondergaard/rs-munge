@@ -1,0 +1,16 @@
+[package]
+name = "munge-sys"
+version = "0.1.0"
+authors = ["Dan Søndergaard <das@birc.au.dk>"]
+edition = "2018"
+keywords = ["ffi", "snappy"]
+description = "Native bindings to libmunge"
+
+build = "build.rs"
+links = "munge"
+
+[dependencies]
+libc = "0.2.0"
+
+[build-dependencies]
+pkg-config = "0.3"
