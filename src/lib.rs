@@ -7,14 +7,28 @@ use std::fmt;
 use munge_sys::{munge_decode, munge_encode, munge_strerror, MUNGE_SUCCESS};
 
 #[derive(Debug)]
-struct DecodedMessage {
-    pub uid: u32,
-    pub gid: u32,
-    pub payload: Option<String>,
+pub struct DecodedMessage {
+    uid: u32,
+    gid: u32,
+    payload: Option<String>,
+}
+
+impl DecodedMessage {
+    pub fn uid(&self) -> u32 {
+        self.uid
+    }
+
+    pub fn gid(&self) -> u32 {
+        self.gid
+    }
+
+    pub fn payload(&self) -> &Option<String> {
+        &self.payload
+    }
 }
 
 #[derive(Debug)]
-enum MungeError {
+pub enum MungeError {
     Snafu,
     BadArg,
     BadLength,
@@ -44,7 +58,7 @@ impl MungeError {
         }
     }
 
-    fn to_number(&self) -> u32 {
+    pub fn to_number(&self) -> u32 {
         match *self {
             MungeError::Snafu => 1,
             MungeError::BadArg => 2,
@@ -67,7 +81,7 @@ impl MungeError {
         }
     }
 
-    fn from_number(number: u32) -> MungeError {
+    pub fn from_number(number: u32) -> MungeError {
         match number {
             1 => MungeError::Snafu,
             2 => MungeError::BadArg,
@@ -98,7 +112,7 @@ impl fmt::Display for MungeError {
     }
 }
 
-fn encode(payload: Option<&str>) -> Result<String, MungeError> {
+pub fn encode(payload: Option<&str>) -> Result<String, MungeError> {
     let mut cred: *mut i8 = std::ptr::null_mut();
 
     let result = if let Some(payload) = payload {
@@ -127,7 +141,7 @@ fn encode(payload: Option<&str>) -> Result<String, MungeError> {
     Ok(cred)
 }
 
-fn decode(cred: &str) -> Result<DecodedMessage, MungeError> {
+pub fn decode(cred: &str) -> Result<DecodedMessage, MungeError> {
     let mut payload: *mut libc::c_void = std::ptr::null_mut();
     let mut payload_length: i32 = 0;
     let mut uid: u32 = 0;
@@ -178,10 +192,11 @@ mod tests {
 
     #[test]
     fn test_that_encode_decode_round_trip_with_payload_works() {
-        let payload = "abc";
-        let message = decode(&encode(Some(payload)).unwrap()).unwrap();
-        assert_eq!(message.payload.unwrap(), payload);
-        assert!(message.uid > 0);
-        assert!(message.gid > 0);
+        let orig_payload = "abc";
+        let message = decode(&encode(Some(orig_payload)).unwrap()).unwrap();
+        let payload = message.payload();
+        assert_eq!(payload, &Some(String::from(orig_payload)));
+        assert!(message.uid() > 0);
+        assert!(message.gid() > 0);
     }
 }
