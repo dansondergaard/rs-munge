@@ -205,4 +205,15 @@ mod tests {
         assert!(message.uid() > 0);
         assert!(message.gid() > 0);
     }
+
+    #[test]
+    fn test_do_we_have_a_memory_leak() {
+        let orig_payload = "abcdefg";
+        let memory_before = procinfo::pid::statm_self().unwrap().resident;
+        for _ in 1..1000 {
+            let _message = decode(&encode(Some(orig_payload)).unwrap()).unwrap();
+        }
+        let memory_after = procinfo::pid::statm_self().unwrap().resident;
+        assert_eq!(memory_before, memory_after);
+    }
 }

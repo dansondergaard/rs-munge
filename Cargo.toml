@@ -10,3 +10,5 @@ keywords = ["munge"]
 libc = "0.2"
 munge-sys = { path = "munge-sys", version = "0.1" }
 
+[dev-dependencies]
+procinfo = "0.4"
