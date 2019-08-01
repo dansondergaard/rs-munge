@@ -1,6 +1,7 @@
 extern crate libc;
 extern crate munge_sys;
 
+use std::error;
 use std::ffi::{CStr, CString};
 use std::fmt;
 
@@ -138,17 +139,21 @@ pub fn encode(payload: Option<&str>) -> Result<String, MungeError> {
     };
 
     if result != MUNGE_SUCCESS {
+        unsafe { libc::free(cred as *mut libc::c_void) };
         return Err(MungeError::from_number(result));
     }
 
     assert!(!cred.is_null());
     let slice = unsafe { CStr::from_ptr(cred) };
-    let cred = slice.to_str().unwrap().to_string();
-    Ok(cred)
+    let owned_cred = slice.to_str().unwrap().to_string();
+    unsafe {
+        libc::free(cred as *mut libc::c_void);
+    };
+    Ok(owned_cred)
 }
 
 pub fn decode(cred: &str) -> Result<DecodedMessage, MungeError> {
-    let mut payload: *mut libc::c_void = std::ptr::null_mut();
+    let mut payload_ptr: *mut libc::c_void = std::ptr::null_mut();
     let mut payload_length: i32 = 0;
     let mut uid: u32 = 0;
     let mut gid: u32 = 0;
@@ -157,22 +162,25 @@ pub fn decode(cred: &str) -> Result<DecodedMessage, MungeError> {
         munge_decode(
             cred.as_ptr() as *const i8,
             std::ptr::null_mut(),
-            &mut payload,
+            &mut payload_ptr,
             &mut payload_length,
             &mut uid,
             &mut gid,
         )
     };
     if result != MUNGE_SUCCESS {
+        unsafe { libc::free(payload_ptr) };
         return Err(MungeError::from_number(result));
     }
 
-    let payload = if payload.is_null() {
+    let payload = if payload_ptr.is_null() && payload_length == 0 {
         None
     } else {
-        // Munge always gives us a null-terminated
-        let slice = unsafe { CStr::from_ptr(payload as *const i8) };
-        Some(slice.to_str().unwrap().to_string())
+        // Munge always gives us a NUL-terminated string.
+        let slice = unsafe { CStr::from_ptr(payload_ptr as *const i8) };
+        let owned_payload = slice.to_str().unwrap().to_string();
+        unsafe { libc::free(payload_ptr) };
+        Some(owned_payload)
     };
 
     Ok(DecodedMessage { uid, gid, payload })
