@@ -106,6 +106,12 @@ impl MungeError {
     }
 }
 
+impl error::Error for MungeError {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        None
+    }
+}
+
 impl fmt::Display for MungeError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.to_string())
