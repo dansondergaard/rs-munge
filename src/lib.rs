@@ -153,7 +153,7 @@ pub fn encode(payload: Option<&str>) -> Result<String, MungeError> {
 }
 
 pub fn decode(cred: &str) -> Result<DecodedMessage, MungeError> {
-    let mut payload_ptr: *mut libc::c_void = std::ptr::null_mut();
+    let mut payload: *mut libc::c_void = std::ptr::null_mut();
     let mut payload_length: i32 = 0;
     let mut uid: u32 = 0;
     let mut gid: u32 = 0;
@@ -162,24 +162,29 @@ pub fn decode(cred: &str) -> Result<DecodedMessage, MungeError> {
         munge_decode(
             cred.as_ptr() as *const i8,
             std::ptr::null_mut(),
-            &mut payload_ptr,
+            &mut payload,
             &mut payload_length,
             &mut uid,
             &mut gid,
         )
     };
     if result != MUNGE_SUCCESS {
-        unsafe { libc::free(payload_ptr) };
+        if !payload.is_null() {
+            unsafe { libc::free(payload) };
+        }
         return Err(MungeError::from_number(result));
     }
 
-    let payload = if payload_ptr.is_null() && payload_length == 0 {
+    let payload = if payload.is_null() && payload_length == 0 {
         None
     } else {
-        // Munge always gives us a NUL-terminated string.
-        let slice = unsafe { CStr::from_ptr(payload_ptr as *const i8) };
-        let owned_payload = slice.to_str().unwrap().to_string();
-        unsafe { libc::free(payload_ptr) };
+        let owned_payload = unsafe {
+            String::from_raw_parts(
+                payload as *mut _,
+                payload_length as usize,
+                payload_length as usize,
+            )
+        };
         Some(owned_payload)
     };
 
