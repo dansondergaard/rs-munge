@@ -160,7 +160,7 @@ pub fn decode(cred: &str) -> Result<DecodedMessage, MungeError> {
 
     let result = unsafe {
         munge_decode(
-            cred.as_ptr() as *const i8,
+            cred.as_ptr() as *const libc::c_char,
             std::ptr::null_mut(),
             &mut payload,
             &mut payload_length,
