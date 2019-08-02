@@ -139,7 +139,6 @@ pub fn encode(payload: Option<&str>) -> Result<String, MungeError> {
     };
 
     if result != MUNGE_SUCCESS {
-        unsafe { libc::free(cred as *mut libc::c_void) };
         return Err(MungeError::from_number(result));
     }
 
