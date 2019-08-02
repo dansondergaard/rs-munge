@@ -203,9 +203,9 @@ mod tests {
     #[test]
     fn test_that_encode_decode_round_trip_without_payload_works() {
         let message = decode(&encode(None).unwrap()).unwrap();
-        assert_eq!(message.payload, None);
-        assert!(message.uid > 0);
-        assert!(message.gid > 0);
+        assert_eq!(message.payload(), &None);
+        assert!(message.uid() > 0);
+        assert!(message.gid() > 0);
     }
 
     #[test]
