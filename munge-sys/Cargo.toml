@@ -1,6 +1,6 @@
 [package]
 name = "munge-sys"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Dan Søndergaard <das@birc.au.dk>"]
 edition = "2018"
 keywords = ["ffi", "snappy"]
@@ -10,7 +10,7 @@ build = "build.rs"
 links = "munge"
 
 [dependencies]
-libc = "0.2.0"
+libc = "0.2.60"
 
 [build-dependencies]
 pkg-config = "0.3"

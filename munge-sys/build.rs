@@ -1,5 +1,6 @@
-extern crate pkg_config;
-
 fn main() {
-    pkg_config::probe_library("munge").unwrap();
+    ::pkg_config::probe_library("munge")
+        .unwrap_or_else(|err| panic!(
+            "`munge-sys` requires `munge` to be installed: {}", err,
+        ));
 }
