@@ -120,7 +120,7 @@ impl fmt::Display for MungeError {
 }
 
 pub fn encode(payload: Option<&str>) -> Result<String, MungeError> {
-    let mut cred: *mut i8 = std::ptr::null_mut();
+    let mut cred: *mut libc::c_char = std::ptr::null_mut();
 
     let result = if let Some(payload) = payload {
         let payload_cstring = CString::new(payload).unwrap();
