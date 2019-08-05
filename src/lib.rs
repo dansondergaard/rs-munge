@@ -306,7 +306,7 @@ fn decode (
         munge_decode(
             cred.as_ptr() as *const c_char,
             std::ptr::null_mut(),
-            &mut payload_ptr,
+            &mut payload,
             &mut payload_length,
             &mut ret.uid,
             &mut ret.gid,
