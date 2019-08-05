@@ -252,56 +252,27 @@ pub fn decode(cred: impl Into<String> + AsRef<str>) -> Result<Credential, Error>
 mod tests {
     use super::{decode, encode, MungeError};
 
-    static MEM_TEST: ::spin::RwLock<()> = ::spin::RwLock::new(());
-
     #[test]
     fn test_that_mungeerror_works() {
-        match MEM_TEST.read() {
-            _ => {
-                assert_eq!(MungeError::Snafu.to_string(), "Internal error");
-                assert_eq!(MungeError::BadArg.to_string(), "Invalid argument");
-            }
-        }
+        assert_eq!(MungeError::Snafu.to_string(), "Internal error");
+        assert_eq!(MungeError::BadArg.to_string(), "Invalid argument");
     }
 
     #[test]
     fn test_that_encode_decode_round_trip_without_payload_works() {
-        match MEM_TEST.read() {
-            _ => {
-                let message = decode(&encode(None).unwrap()).unwrap();
-                assert_eq!(message.payload, None);
-                assert!(message.uid > 0);
-                assert!(message.gid > 0);
-            }
-        }
+        let message = decode(&encode(None).unwrap()).unwrap();
+        assert_eq!(message.payload, None);
+        assert!(message.uid > 0);
+        assert!(message.gid > 0);
     }
 
     #[test]
     fn test_that_encode_decode_round_trip_with_payload_works() {
-        match MEM_TEST.read() {
-            _ => {
-                let orig_payload = &b"abc"[..];
-                let message = decode(&encode(Some(orig_payload)).unwrap()).unwrap();
-                let payload = message.payload();
-                assert_eq!(payload, Some(orig_payload));
-                assert!(message.uid() > 0);
-                assert!(message.gid() > 0);
-            }
-        }
-    }
-
-    #[test]
-    fn test_do_we_have_a_memory_leak() {
-        match MEM_TEST.write() {
-            _ => {
-                let orig_payload = &b"abcdefg"[..];
-                let memory_before = procinfo::pid::statm_self().unwrap().resident;
-                for _ in 1..1_000 {
-                    let _ = decode(&encode(Some(orig_payload)).unwrap()).unwrap();
-                }
-                let memory_after = procinfo::pid::statm_self().unwrap().resident;
-                assert_eq!(memory_before, memory_after);
-            }
-        }
+        let orig_payload = &b"abc"[..];
+        let message = decode(&encode(Some(orig_payload)).unwrap()).unwrap();
+        let payload = message.payload();
+        assert_eq!(payload, Some(orig_payload));
+        assert!(message.uid() > 0);
+        assert!(message.gid() > 0);
     }
 }
