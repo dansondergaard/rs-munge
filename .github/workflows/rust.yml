@@ -11,7 +11,7 @@ jobs:
     - uses: actions/checkout@v1
     
     - name: Fix permissions for munge
-      run: sudo chmod -R 700 /etc
+      run: ls -lh / && ls -l /etc && ls -l /var
     
     - name: Install munge
       run: sudo apt-get update -y -qq && sudo apt-get install -y munge
