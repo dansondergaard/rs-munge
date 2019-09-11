@@ -9,8 +9,15 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
+    
+    - name: Fix permissions for munge
+      run: chmod -R 700 /etc
+    
     - name: Install munge
-      run: sudo apt-get update && sudo apt-get install munge
+      run: sudo apt-get update -y -qq && sudo apt-get install -y munge
+    - name: Test that munge works
+      run: munge -n | unmunge
+      
     - name: Build
       run: cargo build --verbose
     - name: Run tests
